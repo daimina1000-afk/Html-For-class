@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的英文單字學習與測驗系統 (課堂專注版)</title>
+    <style>
+        /* ==================================== */
+        /* 🎨 高級感介面 CSS 設計 */
+        /* ==================================== */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            background-color: #f0f4f8; 
+            color: #333;
+            text-align: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            border-bottom: 3px solid #f9c0c0;
+            padding-bottom: 10px;
+            display: inline-block;
+            margin-bottom: 30px;
+        }
+
+        /* 主容器樣式 */
+        #main-menu, #quiz-container, #game-container, #history-container, #search-area {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            max-width: 900px;
+            margin: 20px auto;
+            /* 默認都隱藏，只透過 JS 控制顯示 */
+            display: none; 
+        }
+        /* 主選單容器必須在 JS 載入前佔位，所以在此處設置為塊級顯示，但 JS onload 後會重新由 showScreen 控制 */
+        #main-menu {
+             max-width: 600px;
+             /* 為了防止閃爍，這裡仍然讓它顯示，但 JS 會重新控制 */
+             display: block; 
+        }
+
+        h2, h3 {
+            color: #34495e;
+            border-bottom: 1px dashed #ccc;
+            padding-bottom: 10px;
+            margin-top: 10px;
+        }
+
+        /* 按鈕樣式 */
+        button {
+            padding: 10px 22px;
+            font-size: 1.1em;
+            background-color: #f39c12; 
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            margin: 8px; 
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #e67e22;
+            transform: translateY(-1px);
+        }
+
+        /* 導航按鈕群組 */
+        #main-menu button {
+            display: block;
+            width: 80%;
+            margin: 15px auto;
+            background-color: #3498db;
+        }
+        #main-menu button:hover {
+            background-color: #2980b9;
+        }
+        
+        /* 測驗區塊和輸入 */
+        #userAnswer {
+            padding: 12px;
+            font-size: 1.1em;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            width: 55%;
+            margin-right: 10px;
+        }
+        #question-area {
+            font-size: 1.6em;
+            font-weight: bold;
+            color: #34495e;
+            margin-bottom: 25px;
+            min-height: 60px;
+            line-height: 1.4;
+        }
+        #timer-display { color: #c0392b; font-size: 1.2em; margin-bottom: 15px; font-weight: bold; }
+
+        /* ==================================== */
+        /* 🕹️ 詞彙配對遊戲 CSS */
+        /* ==================================== */
+        #matching-game {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+            min-height: 250px;
+            max-width: 700px;
+            margin: 20px auto;
+        }
+        .match-card {
+            width: 120px;
+            height: 60px;
+            background-color: #ecf0f1;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            margin: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .match-card:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .selected {
+            background-color: #f39c12;
+            color: white;
+            transform: scale(1.05);
+        }
+        .matched {
+            background-color: #2ecc71;
+            color: white;
+            pointer-events: none; 
+        }
+        /* 遊戲提示 */
+        #game-feedback {
+            font-size: 1.1em;
+            margin: 15px 0;
+            min-height: 20px;
+        }
+        /* ==================================== */
+        /* 列表/歷史紀錄 CSS */
+        /* ==================================== */
+        #search-area {
+            max-width: 900px;
+        }
+        #searchInput {
+            width: 80%;
+            padding: 10px;
+            font-size: 1em;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        th, td {
+            border: 1px solid #ecf0f1;
+            padding: 10px;
+            text-align: left;
+        }
+        thead {
+            background-color: #34495e;
+            color: #ecf0f1;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🐱 英文詞彙學習系統 (課堂專注版) 🐈</h1>
+    
+    <div id="main-menu">
+        <h2>請選擇功能模式</h2>
+        <button onclick="showScreen('quiz-setup')">📝 開始正式測驗</button>
+        <button onclick="showScreen('game')">🎮 詞彙配對小遊戲</button>
+        <button onclick="showScreen('history')">📊 測驗歷史紀錄 (教師儀表板)</button>
+        <button onclick="showScreen('search')">📚 查看所有單字表</button>
+    </div>
+
+    <div id="history-container">
+        <h3>📊 測驗歷史紀錄 (教師儀表板)</h3>
+        <p style="color:#e74c3c;">**提示：這些數據儲存在您目前使用的瀏覽器中。**</p>
+        <table id="history-table">
+            <thead>
+                <tr>
+                    <th>測驗次數</th>
+                    <th>題數</th>
+                    <th>得分</th>
+                    <th>百分比</th>
+                    <th>花費時間</th>
+                    <th>日期</th>
+                </tr>
+            </thead>
+            <tbody id="history-tbody">
+                <tr><td colspan="6">載入中...</td></tr>
+            </tbody>
+        </table>
+        <button onclick="clearHistory()" style="background-color: #e74c3c; margin-top: 20px;">清除所有紀錄</button>
+        <button onclick="showScreen('main-menu')" style="background-color: #7f8c8d; margin-top: 20px;">返回主選單</button>
+    </div>
+    
+    <div id="game-container">
+        <h2>🕹️ 詞彙配對小遊戲 (課堂互動模擬)</h2>
+        <p style="color: #f39c12;">請點擊英文單字和對應的中文詞義來配對 (10組)</p>
+        <p style="color: #3498db;">教師提示：請開啟 Console (F12) 查看學生的實時點擊日誌。</p>
+        
+        <div id="matching-game">
+            <button onclick="startGame()">開始遊戲</button>
+        </div>
+        <div id="game-feedback"></div>
+        <button onclick="showScreen('main-menu')">返回主選單</button>
+    </div>
+
+    <div id="quiz-container">
+        <h2 id="quiz-title">📝 單字測驗</h2>
+        
+        <div id="quiz-setup">
+             <div id="quiz-session-info">
+                您已完成測驗：<span id="quiz-counter" style="font-weight: bold;">0</span> 次
+            </div>
+            <label for="questionCount" style="font-size: 1.1em; margin-right: 10px;">選擇題數：</label>
+            <select id="questionCount">
+                <option value="5">5 題</option>
+                <option value="10" selected>10 題</option>
+                <option value="20">20 題</option>
+            </select>
+            <button onclick="initQuiz()" id="start-button">開始正式測驗</button>
+            <button onclick="showScreen('main-menu')">返回主選單</button>
+        </div>
+
+        <div id="quiz-active" style="display:none;">
+            <div id="timer-display">計時：00:00</div>
+            <div id="score-display">分數：0 / 0</div>
+            
+            <div id="question-area">
+                <p id="chinese-prompt"></p>
+            </div>
+
+            <div>
+                <input type="text" id="userAnswer" placeholder="請輸入英文單字">
+                <button onclick="checkAnswer()">送出答案</button>
+            </div>
+            <div id="feedback"></div>
+        </div>
+
+        <div id="quiz-finished" style="display:none;">
+            <p id="final-score"></p> 
+            <button onclick="startNewQuiz()">再次測驗</button>
+            <button onclick="showScreen('search')">查看單字表</button>
+            <button onclick="showScreen('main-menu')">返回主選單</button>
+        </div>
+    </div>
+
+    <div id="search-area">
+        <h3>📚 詞彙列表與即時搜尋</h3>
+        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="輸入英文或中文關鍵字來搜尋..." >
+
+        <table id="vocab-table">
+            <thead>
+                <tr><th>No.</th><th>English</th><th>Part of Speech</th><th>Chinese</th></tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+        <button onclick="showScreen('main-menu')" style="margin-top: 20px;">返回主選單</button>
+    </div>
+
+    <script>
+        // === JavaScript 數據與邏輯 ===
+        const vocabulary = [
+            { en: 'a', pos: 'article', ch: '一個' }, { en: 'angry', pos: 'adj', ch: '生氣的' }, { en: 'apple', pos: 'n', ch: '蘋果' },
+            { en: 'at', pos: 'prep', ch: '在' }, { en: 'bag', pos: 'n', ch: '袋子' }, { en: 'banana', pos: 'n', ch: '香蕉' },
+            { en: 'be', pos: 'v', ch: '是' }, { en: 'bed', pos: 'n', ch: '床' }, { en: 'bike', pos: 'n', ch: '腳踏車' },
+            { en: 'big', pos: 'adj', ch: '大的' }, { en: 'bird', pos: 'n', ch: '鳥' }, { en: 'blue', pos: 'adj', ch: '藍色的' },
+            { en: 'book', pos: 'n', ch: '書本' }, { en: 'box', pos: 'n', ch: '箱子' }, { en: 'boy', pos: 'n', ch: '男孩' },
+            { en: 'bus', pos: 'n', ch: '公車' }, { en: 'by', pos: 'prep', ch: '經由/旁邊' }, { en: 'cake', pos: 'n', ch: '蛋糕' },
+            { en: 'can', pos: 'v', ch: '能/會' }, { en: 'car', pos: 'n', ch: '汽車' }, { en: 'cat', pos: 'n', ch: '貓' },
+            { en: 'chair', pos: 'n', ch: '椅子' }, { en: 'cola', pos: 'n', ch: '可樂' }, { en: 'cook', pos: 'v/n', ch: '煮/廚師' },
+            { en: 'dance', pos: 'v', ch: '跳舞' }, { en: 'desk', pos: 'n', ch: '書桌' }, { en: 'do', pos: 'v/aux', ch: '做' },
+            { en: 'doctor', pos: 'n', ch: '醫生' }, { en: 'dog', pos: 'n', ch: '狗' }, { en: 'draw', pos: 'v', ch: '畫' },
+            { en: 'drink', pos: 'v', ch: '喝' }, { en: 'eat', pos: 'v', ch: '吃' }, { en: 'egg', pos: 'n', ch: '蛋' },
+            { en: 'eight', pos: 'n', ch: '八' }, { en: 'eraser', pos: 'n', ch: '橡皮擦' }, { en: 'fish', pos: 'n', ch: '魚' },
+            { en: 'five', pos: 'n', ch: '五' }, { en: 'four', pos: 'n', ch: '四' }, { en: 'girl', pos: 'n', ch: '女孩' },
+            { en: 'go', pos: 'v', ch: '去' }, { en: 'good', pos: 'adj', ch: '好的' }, { en: 'green', pos: 'adj', ch: '綠色的' },
+            { en: 'happy', pos: 'adj', ch: '快樂的' }, { en: 'he', pos: 'pron', ch: '他' }, { en: 'home', pos: 'n', ch: '家' },
+            { en: 'hot dog', pos: 'n', ch: '熱狗' }, { en: 'I', pos: 'pron', ch: '我' }, { en: 'in', pos: 'prep', ch: '在…之內' },
+            { en: 'it', pos: 'pron', ch: '它' }, { en: 'juice', pos: 'n', ch: '果汁' }, { en: 'jump', pos: 'v', ch: '跳' },
+            { en: 'key', pos: 'n', ch: '鑰匙' }, { en: 'leg', pos: 'n', ch: '腿' }, { en: 'like', pos: 'v', ch: '喜歡' },
+            { en: 'lion', pos: 'n', ch: '獅子' }, { en: 'marker', pos: 'n', ch: '馬克筆' }, { en: 'milk', pos: 'n', ch: '牛奶' },
+            { en: 'monkey', pos: 'n', ch: '猴子' }, { en: 'name', pos: 'n', ch: '名字' }, { en: 'nine', pos: 'n', ch: '九' },
+            { en: 'no', pos: 'adj', ch: '沒有' }, { en: 'not', pos: 'adv', ch: '不' }, { en: 'on', pos: 'prep', ch: '在…上面' },
+            { en: 'one', pos: 'n', ch: '一' }, { en: 'park', pos: 'n/v', ch: '公園/停車' }, { en: 'pen', pos: 'n', ch: '原子筆' },
+            { en: 'pencil', pos: 'n', ch: '鉛筆' }, { en: 'pig', pos: 'n', ch: '豬' }, { en: 'pizza', pos: 'n', ch: '披薩' },
+            { en: 'rabbit', pos: 'n', ch: '兔子' }, { en: 'read', pos: 'v', ch: '閱讀' }, { en: 'red', pos: 'adj', ch: '紅色的' },
+            { en: 'ruler', pos: 'n', ch: '尺' }, { en: 'run', pos: 'v', ch: '跑' }, { en: 'sad', pos: 'adj', ch: '難過的' },
+            { en: 'see', pos: 'v', ch: '看見' }, { en: 'seven', pos: 'n', ch: '七' }, { en: 'she', pos: 'pron', ch: '她' },
+            { en: 'short', pos: 'adj', ch: '矮的/短的' }, { en: 'sing', pos: 'v', ch: '唱歌' }, { en: 'six', pos: 'n', ch: '六' },
+            { en: 'sleep', pos: 'v', ch: '睡覺' }, { en: 'small', pos: 'adj', ch: '小的' }, { en: 'swim', pos: 'v', ch: '游泳' },
+            { en: 'table', pos: 'n', ch: '桌子' }, { en: 'tall', pos: 'adj', ch: '高的' }, { en: 'tea', pos: 'n', ch: '茶' },
+            { en: 'ten', pos: 'n', ch: '十' }, { en: 'the', pos: 'article', ch: '這' }, { en: 'they', pos: 'pron', ch: '他們' },
+            { en: 'three', pos: 'n', ch: '三' }, { en: 'tiger', pos: 'n', ch: '老虎' }, { en: 'train', pos: 'n', ch: '火車' },
+            { en: 'two', pos: 'n', ch: '二' }, { en: 'water', pos: 'n', ch: '水' }, { en: 'we', pos: 'pron', ch: '我們' },
+            { en: 'write', pos: 'v', ch: '寫' }, { en: 'yes', pos: 'adv', ch: '是' }, { en: 'you', pos: 'pron', ch: '你/你們' },
+            { en: 'zoo', pos: 'n', ch: '動物園' }
+        ];
+
+        // --- 變數定義 ---
+        let quizWords = []; 
+        let currentQuestion = 0;
+        let correctCount = 0; 
+        let TOTAL_QUESTIONS = 10; 
+        let quizCount = 0;
+        let timerInterval = null;
+        let startTime = null;
+        const HISTORY_KEY = 'quiz_history'; 
+
+        // --- 遊戲變數 ---
+        let selectedCards = [];
+        let matchedCount = 0;
+        const GAME_TOTAL_PAIRS = 10; 
+
+        // 介面元素映射
+        const SCREENS = {
+            'main-menu': document.getElementById('main-menu'),
+            'quiz-setup': document.getElementById('quiz-container'), // setup and active are inside
+            'game': document.getElementById('game-container'),
+            'history': document.getElementById('history-container'),
+            'search': document.getElementById('search-area')
+        };
+        const quizSetup = document.getElementById('quiz-setup');
+        const quizActive = document.getElementById('quiz-active');
+        const quizFinished = document.getElementById('quiz-finished');
+        const historyTbody = document.getElementById('history-tbody');
+        const matchingGameDiv = document.getElementById('matching-game');
+        const gameFeedbackDiv = document.getElementById('game-feedback');
+        const quizCounterElement = document.getElementById('quiz-counter');
+        const timerDisplayElement = document.getElementById('timer-display');
+        const promptElement = document.getElementById('chinese-prompt');
+        const inputElement = document.getElementById('userAnswer');
+        const checkButton = document.getElementById('quiz-active').querySelector('button[onclick="checkAnswer()"]');
+        const finalScoreElement = document.getElementById('final-score');
+        const scoreElement = document.getElementById('score-display');
+        const feedbackElement = document.getElementById('feedback');
+        
+        
+        // ====================================
+        // 🖥️ 介面切換與導航 (核心功能)
+        // ====================================
+
+        /**
+         * 顯示指定的畫面並隱藏其他所有主要區塊。
+         * @param {string} screenId - 要顯示的區塊 ID (e.g., 'main-menu', 'quiz-setup', 'search')
+         */
+        function showScreen(screenId) {
+            // 遍歷所有螢幕，全部隱藏
+            Object.values(SCREENS).forEach(el => el.style.display = 'none');
+
+            // 顯示指定螢幕
+            if (SCREENS[screenId]) {
+                SCREENS[screenId].style.display = 'block';
+                window.scrollTo({ top: 0, behavior: 'smooth' }); // 捲動到頂部
+
+                // 特殊處理：當進入測驗設置時，確保顯示設置區
+                if (screenId === 'quiz-setup') {
+                    // Quiz container is the parent, show it first
+                    document.getElementById('quiz-container').style.display = 'block'; 
+                    quizSetup.style.display = 'block';
+                    quizActive.style.display = 'none';
+                    quizFinished.style.display = 'none';
+                }
+                
+                // 特殊處理：當進入歷史紀錄時，載入數據
+                if (screenId === 'history') {
+                    loadHistory();
+                }
+
+                // 特殊處理：當進入遊戲時，重設遊戲
+                if (screenId === 'game') {
+                    matchingGameDiv.innerHTML = '<button onclick="startGame()">開始遊戲</button>';
+                    gameFeedbackDiv.textContent = '';
+                }
+            }
+        }
+        
+        // ====================================
+        // 🛠️ 通用工具與計時
+        // ====================================
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function updateTimer() {
+            const elapsed = Date.now() - startTime;
+            const totalSeconds = Math.floor(elapsed / 1000);
+            const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const seconds = String(totalSeconds % 60).padStart(2, '0');
+            timerDisplayElement.textContent = `計時：${minutes}:${seconds}`;
+        }
+        
+        function formatTime(seconds) {
+            const minutes = String(Math.floor(seconds / 60)).padStart(2, '0');
+            const remainingSeconds = String(seconds % 60).padStart(2, '0');
+            return `${minutes}:${remainingSeconds}`;
+        }
+
+        // ====================================
+        // 📊 歷史紀錄/教師儀表板功能
+        // ====================================
+
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+            historyTbody.innerHTML = '';
+
+            if (history.length === 0) {
+                historyTbody.innerHTML = '<tr><td colspan="6">尚無測驗紀錄。</td></tr>';
+                return;
+            }
+
+            history.forEach((record, index) => {
+                const row = historyTbody.insertRow();
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${record.totalQuestions}</td>
+                    <td>${record.correctCount} / ${record.totalQuestions}</td>
+                    <td>${Math.round((record.correctCount / record.totalQuestions) * 100)}%</td>
+                    <td>${record.timeTaken}</td>
+                    <td>${record.date}</td>
+                `;
+            });
+            quizCount = history.length;
+            quizCounterElement.textContent = quizCount;
+        }
+
+        function saveResult(totalQuestions, correctCount, timeTaken) {
+            const history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+            
+            const date = new Date().toLocaleDateString('zh-TW', {
+                month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+
+            const newRecord = {
+                totalQuestions,
+                correctCount,
+                timeTaken,
+                date
+            };
+
+            history.push(newRecord);
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            console.log(`[教師日誌] 測驗已結束並儲存結果：題數=${totalQuestions}, 答對=${correctCount}, 時間=${timeTaken}`);
+        }
+
+        function clearHistory() {
+            if (confirm("確定要清除所有測驗紀錄嗎？此操作無法恢復。")) {
+                localStorage.removeItem(HISTORY_KEY);
+                alert("測驗紀錄已清除。");
+                loadHistory();
+            }
+        }
+        
+        // ====================================
+        // 📝 正式測驗功能
+        // ====================================
+
+        function loadNewQuestion() {
+            if (currentQuestion < TOTAL_QUESTIONS) {
+                const word = quizWords[currentQuestion];
+                promptElement.innerHTML = `第 ${currentQuestion + 1} 題：請輸入${word.ch} (${word.pos}) 的英文單字`;
+                inputElement.value = '';
+                inputElement.focus();
+                checkButton.disabled = false;
+                feedbackElement.textContent = '';
+                console.log(`[教師日誌] 測驗進行中: 題目 ${currentQuestion + 1}/${TOTAL_QUESTIONS}`);
+            } else {
+                // *** 測驗結束邏輯 ***
+                clearInterval(timerInterval); 
+                const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+                const finalTime = formatTime(elapsedSeconds);
+                
+                saveResult(TOTAL_QUESTIONS, correctCount, finalTime);
+
+                quizActive.style.display = 'none';
+                quizFinished.style.display = 'block';
+                
+                const percentage = Math.round((correctCount / TOTAL_QUESTIONS) * 100);
+                let feedbackMessage = percentage === 100 ? "超級棒！🎉🎉🎉" : (percentage >= 50 ? "已經答對一半！💪 繼續加油！" : "繼續努力，下次會更好！");
+
+                finalScoreElement.innerHTML = `
+                    <span style="color: #c0392b; font-size: 1.8em; font-weight: bold;">${feedbackMessage}</span>
+                    <br>總題數：${TOTAL_QUESTIONS}，答對：${correctCount} 題 (${percentage}%)<br>
+                    花費時間：${finalTime}
+                `;
+            }
+        }
+
+        function checkAnswer() {
+            if (currentQuestion >= TOTAL_QUESTIONS) return;
+
+            const userInput = inputElement.value.trim().toLowerCase();
+            const correctWord = quizWords[currentQuestion].en.toLowerCase();
+            
+            checkButton.disabled = true;
+
+            const result = userInput === correctWord;
+            if (result) {
+                correctCount++;
+                feedbackElement.innerHTML = `<span style="color: green;">✔ 答對了！</span>`;
+            } else {
+                feedbackElement.innerHTML = `<span style="color: red;">✘ 答錯了。正確答案是：${quizWords[currentQuestion].en}</span>`;
+            }
+            console.log(`[教師日誌] 題目 ${currentQuestion + 1}：輸入答案 "${userInput}"，結果: ${result ? '正確' : '錯誤'}`);
+
+
+            scoreElement.textContent = `分數：${correctCount} / ${currentQuestion + 1}`;
+            
+            currentQuestion++;
+            setTimeout(loadNewQuestion, 1500); 
+        }
+
+        function initQuiz() {
+            console.clear(); // 清空 Console，開始新的測驗日誌
+            
+            // 1. 追蹤測驗次數
+            quizCount++;
+            quizCounterElement.textContent = quizCount;
+
+            // 2. 啟動計時器
+            if (timerInterval) clearInterval(timerInterval);
+            timerDisplayElement.textContent = `計時：00:00`;
+            startTime = Date.now();
+            timerInterval = setInterval(updateTimer, 1000);
+
+            // 3. 準備題目
+            TOTAL_QUESTIONS = parseInt(document.getElementById('questionCount').value);
+            currentQuestion = 0;
+            correctCount = 0;
+            
+            const shuffledVocab = shuffle([...vocabulary]);
+            
+            // 安全檢查：題數不超過詞彙總量
+            if (TOTAL_QUESTIONS > vocabulary.length) { 
+                 TOTAL_QUESTIONS = vocabulary.length; 
+            }
+            quizWords = shuffledVocab.slice(0, TOTAL_QUESTIONS);
+
+            // 4. 切換介面至測驗活動區 (Quiz Container 已由 showScreen('quiz-setup') 顯示)
+            // Note: We intentionally DO NOT call showScreen here to avoid hiding the Quiz Container itself.
+            quizSetup.style.display = 'none';
+            quizActive.style.display = 'block';
+            quizFinished.style.display = 'none';
+            scoreElement.textContent = `分數：0 / 0`;
+            inputElement.disabled = false;
+            
+            loadNewQuestion();
+        }
+
+        function startNewQuiz() {
+            // 測驗結束後，返回設定介面 (由 showScreen 控制隱藏單字表)
+            showScreen('quiz-setup');
+        }
+
+        // ====================================
+        // 🕹️ 詞彙配對遊戲功能
+        // ====================================
+
+        function startGame() {
+            console.clear();
+            console.log("[教師日誌] 詞彙配對遊戲開始！");
+
+            selectedCards = [];
+            matchedCount = 0;
+            gameFeedbackDiv.textContent = '請選擇一對來配對...';
+            
+            // 隨機選取 10 組單字進行遊戲
+            const gameWords = shuffle([...vocabulary]).slice(0, GAME_TOTAL_PAIRS);
+            
+            let cards = [];
+            gameWords.forEach(word => {
+                cards.push({ id: word.en, type: 'en', text: word.en });
+                cards.push({ id: word.en, type: 'ch', text: word.ch });
+            });
+
+            cards = shuffle(cards); 
+
+            matchingGameDiv.innerHTML = '';
+            cards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'match-card';
+                cardElement.textContent = card.text;
+                cardElement.dataset.id = card.id;
+                cardElement.dataset.type = card.type;
+                cardElement.onclick = () => handleCardClick(cardElement);
+                matchingGameDiv.appendChild(cardElement);
+            });
+        }
+
+        function handleCardClick(cardElement) {
+            if (cardElement.classList.contains('selected') || cardElement.classList.contains('matched') || selectedCards.length === 2) {
+                return;
+            }
+
+            const cardInfo = cardElement.dataset.id + " (" + cardElement.dataset.type + ")";
+            console.log(`[教師日誌] 學生點擊: ${cardInfo}`);
+
+            cardElement.classList.add('selected');
+            selectedCards.push(cardElement);
+
+            if (selectedCards.length === 2) {
+                setTimeout(checkMatch, 800);
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = selectedCards;
+
+            if (card1.dataset.id === card2.dataset.id && card1.dataset.type !== card2.dataset.type) {
+                // 成功配對
+                card1.classList.remove('selected');
+                card2.classList.remove('selected');
+                card1.classList.add('matched');
+                card2.classList.add('matched');
+                gameFeedbackDiv.textContent = '配對成功！🎉';
+                matchedCount++;
+                console.log(`[教師日誌] 配對成功！剩餘 ${GAME_TOTAL_PAIRS - matchedCount} 組`);
+
+                if (matchedCount === GAME_TOTAL_PAIRS) {
+                    gameFeedbackDiv.innerHTML = '✨ **恭喜完成所有配對！** ✨';
+                    console.log("[教師日誌] 遊戲完成！");
+                }
+            } else {
+                // 配對失敗
+                gameFeedbackDiv.textContent = '配對失敗，請再試一次。';
+                console.log("[教師日誌] 配對失敗，重置卡片。");
+                setTimeout(() => {
+                    card1.classList.remove('selected');
+                    card2.classList.remove('selected');
+                    gameFeedbackDiv.textContent = '請選擇一對來配對...';
+                }, 500);
+            }
+
+            selectedCards = [];
+        }
+
+
+        // ====================================
+        // 📚 列表與搜尋功能 (詞彙表)
+        // ====================================
+
+        function generateTable() {
+            const tbody = document.querySelector('#vocab-table tbody');
+            let html = '';
+            vocabulary.forEach((word, index) => {
+                html += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${word.en}</td>
+                        <td>${word.pos}</td>
+                        <td>${word.ch}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function filterTable() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toUpperCase().trim();
+            const table = document.getElementById('vocab-table');
+            const tr = table.getElementsByTagName('tr');
+
+            for (let i = 1; i < tr.length; i++) {
+                const tdEnglish = tr[i].getElementsByTagName("td")[1]; 
+                const tdChinese = tr[i].getElementsByTagName("td")[3];
+                
+                if (tdEnglish && tdChinese) {
+                    const englishText = tdEnglish.textContent || tdEnglish.innerText;
+                    const chineseText = tdChinese.textContent || tdChinese.innerText;
+
+                    if (englishText.toUpperCase().indexOf(filter) > -1 || chineseText.indexOf(filter) > -1) {
+                        tr[i].style.display = ""; 
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }       
+            }
+        }
+
+
+        // --- 頁面啟動 ---
+        window.onload = function() {
+            generateTable(); // 生成單字表
+            loadHistory(); // 載入歷史紀錄，更新次數
+            
+            // 初始顯示主選單，並確保所有其他區塊（包括單字表）隱藏
+            showScreen('main-menu'); 
+            
+            // 監聽 Enter 鍵 (僅在測驗進行中時有效)
+            inputElement.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && quizActive.style.display !== 'none') {
+                    checkAnswer();
+                }
+            });
+        };
+
+    </script>
+</body>
+</html>
