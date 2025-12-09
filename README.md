@@ -1,2 +1,2 @@
-# Htmi-For-class
+# Html-For-class
 Course material
